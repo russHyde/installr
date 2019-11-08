@@ -466,71 +466,83 @@ R_version_in_a_folder <- function(folder) {
 
 
 #' @title Returns folder names with R installations
-#' @description 
-#' The function finds the folders where there are R installations.  This is important for deciding what to uninstall, and where from and to to move libraries.
+#'
+#' @description
+#' The function finds the folders where there are R installations.  This is
+#' important for deciding what to uninstall, and where from and to to move
+#' libraries.
 #' This function ignores installations of R-devel at this point.
-#' Also, this function is based on only looking at the folders above the current installation of R.  If there are other isntallations of R outside the above folder, they will not be listed.
-#' @param sort_by_version should the returned vector be sorted by the version number? (default is yes - so that the first element is of the newest version of R) should the user be given the option to choose between which two libraries to copy the packages?  If FALSE (default), the folders are copied from the before-newest R installation to the newest R installation.
-#' @param add_version_to_name should the version number be added to the vector of folders? (default is yes)
-#' @return Returns a character vector (possibly named, possibly sorted) of the folders where there are R installations.
+#' Also, this function is based on only looking at the folders above the
+#' current installation of R.  If there are other isntallations of R outside
+#' the above folder, they will not be listed.
+#'
+#' @param sort_by_version should the returned vector be sorted by the version
+#' number? (default is yes - so that the first element is of the newest version
+#' of R) should the user be given the option to choose between which two
+#' libraries to copy the packages?  If FALSE (default), the folders are copied
+#' from the before-newest R installation to the newest R installation.
+#' @param add_version_to_name should the version number be added to the vector
+#' of folders? (default is yes)
+#' @return Returns a character vector (possibly named, possibly sorted) of the
+#' folders where there are R installations.
+#'
 #' @export
+#'
 #' @seealso \link{copy.packages.between.libraries}
+#'
 #' @examples
 #' \dontrun{
-#' get.installed.R.folders() 
+#' get.installed.R.folders()
 #' # returns the sorted and named vector of
 #' # folder names where R is installed (in different versions).
-#' #  The first element is 
+#' #  The first element is
 #' # the folder of the newest version of R.
-#' 
-#' get.installed.R.folders(F, F) 
-#' # returns the folder names where R is 
-#' # installed (in different versions) - no sorting of 
+#'
+#' get.installed.R.folders(F, F)
+#' # returns the folder names where R is
+#' # installed (in different versions) - no sorting of
 #' # the folder names was performed
 #' }
 get.installed.R.folders <- function(sort_by_version = TRUE, add_version_to_name = TRUE) {
    # get the parent folder of the current R installation
-   R_parent_folder <- paste(head(strsplit(R.home(), "/|\\\\")[[1]], -1), collapse = "/") # the strsplit is seperating the path whether it is / or \\ (but since \\ is a problem, I need to cancel it with \\\\)      
+   # - here, the strsplit is seperating the path whether it is / or \\ (but
+   # since \\ is a problem, I need to cancel it with \\\\)
+   R_parent_folder <- get_parent_of_r_folders()
    items_in_R_parent_folder <- list.files(R_parent_folder)
-   
-   R_folders <- file.path(R_parent_folder, items_in_R_parent_folder) # some of these may NOT be R folders
+
+   # some of these may NOT be R folders
+   R_folders <- file.path(R_parent_folder, items_in_R_parent_folder)
    R_folders_versions <- sapply(R_folders, R_version_in_a_folder)
-   #    R_folders = "C:/R-3.0.2"     
+   #    R_folders = "C:/R-3.0.2"
    if(all(is.na(R_folders_versions))) {
-      warning("Could not find any R installation on your system. (You might have installed your R version on 'c:\\R' without sub folders...")
+      warning(
+         "Could not find any R installation on your system. (You might have",
+         "installed your R version on 'c:\\R' without sub folders..."
+      )
       return(NULL)
    }
-   
+
    # remove NON R installation folders (for example "library")
    ss_R_folders <- !is.na(R_folders_versions)
    R_folders <- R_folders[ss_R_folders]
    R_folders_versions <- R_folders_versions[ss_R_folders]
-   
+
    # Fix thanks to Dieter Menne:
    R_folders_versions <- unlist(R_folders_versions)
-   # this might resolve some cases - but it is not yet clear to me that it does.
-   
-   
-### old way of doing this which relied on the folder being of the form:  D:/R/R-3.0.1  
-#    ss_R_subfolders_in_R_parent_folder <- grepl("R-[0-9]+.[0-9]+.[0-9]+$", items_in_R_parent_folder)
-#    # notice the use of $ at the end of the regex
-#    # Good regex syntax http://laurikari.net/tre/documentation/regex-syntax/
-#    R_subfolders <- items_in_R_parent_folder[ss_R_subfolders_in_R_parent_folder]
-#    
-#    R_folders <- file.path(R_parent_folder, R_subfolders) # a vector with the full path folders of all of the R installations (Assuming they are all on the same folder)
-#    R_folders_versions <- gsub("R-", "", R_subfolders)
+   # this might resolve some cases - but it is not yet clear to me that it
+   # does.
 
-   
-   
-   R_folders_versions_number <- turn.version.to.number(R_folders_versions)   
-   
-   if(add_version_to_name) names(R_folders) <- R_folders_versions   
-   
+   R_folders_versions_number <- turn.version.to.number(R_folders_versions)
+
+   if(add_version_to_name) names(R_folders) <- R_folders_versions
+
    if(sort_by_version) {
-      ss_order_R_folders_by_version <- order(R_folders_versions_number,decreasing=T)
-      R_folders <- R_folders[ss_order_R_folders_by_version]      
+      ss_order_R_folders_by_version <- order(
+         R_folders_versions_number, decreasing = TRUE
+      )
+      R_folders <- R_folders[ss_order_R_folders_by_version]
    } # else - if not - just return the order of the folders as they where extracted
-   return(R_folders)            
+   return(R_folders)
 }
 
 # for testing:
@@ -540,105 +552,156 @@ get.installed.R.folders <- function(sort_by_version = TRUE, add_version_to_name 
 
 
 #' @title Copies all packages from one library folder to another
+#'
 #' @export
-#' @description 
-#' Copies all packages from one folder to another.  This function is used if we wish to either:
+#'
+#' @description
+#' Copies all packages from one folder to another.  This function is used if we
+#' wish to either:
 #' \itemize{
-#' \item Upgrade R to a new version - and copy all of the packages from the old R installation to the new one.
-#' \item Move to a global library system - and wanting to copy all of packages from the local library folder to the global one
+#' \item Upgrade R to a new version - and copy all of the packages from the old
+#' R installation to the new one.
+#' \item Move to a global library system - and wanting to copy all of packages
+#' from the local library folder to the global one
 #' }
-#' It takes into account that we don't want to copy packages which have "high" importance (such as MASS, boot, graphics, utils, rpart, Matrix and more GREAT packages...) to the new library folder.
-#' Also, it assumes that within an R installation, the packages are located inside the "library" folder.
-#' @param from a character vector for the location of the old library folder FROM which to copy files from.
-#' @param to a character vector for the location of the old library folder TO which to copy files to.
-#' @param ask should the user be given the option to choose between which two libraries to copy the packages?  If FALSE (default), the folders are copied from the before-newest R installation to the newest R installation.  This the overrides "from" and "to" parameters.
-#' @param keep_old should the packages be COPIED to the new library folder, thus KEEPing the old package as they are?  Or should they be removed?
-#' @param do_NOT_override_packages_in_new_R default TRUE  If FALSE, then If a package exists in both the "from" and "to" library folders - it would copy to "to" the version of the package from "from". (this parameter should rarely be FALSE)
+#' It takes into account that we don't want to copy packages which have "high"
+#' importance (such as MASS, boot, graphics, utils, rpart, Matrix and more
+#' GREAT packages...) to the new library folder.
+#' Also, it assumes that within an R installation, the packages are located
+#' inside the "library" folder.
+#'
+#' @param from a character vector for the location of the old library folder
+#' FROM which to copy files from.
+#' @param to a character vector for the location of the old library folder TO
+#' which to copy files to.
+#' @param ask should the user be given the option to choose between which two
+#' libraries to copy the packages?  If FALSE (default), the folders are copied
+#' from the before-newest R installation to the newest R installation.  This
+#' the overrides "from" and "to" parameters.
+#' @param keep_old should the packages be COPIED to the new library folder,
+#' thus KEEPing the old package as they are?  Or should they be removed?
+#' @param do_NOT_override_packages_in_new_R default TRUE  If FALSE, then If a
+#' package exists in both the "from" and "to" library folders - it would copy
+#' to "to" the version of the package from "from". (this parameter should
+#' rarely be FALSE)
+#'
 #' @return TRUE if it copied (moved) packages, and FALSE if it did not.
+#'
 #' @seealso \link{get.installed.R.folders}
+#'
 #' @examples
 #' \dontrun{
-#' copy.packages.between.libraries(ask = T) 
-#' # it will ask you from what R version 
-#' # to copy the packages into which R version.  
-#' # Since (do_NOT_override_packages_in_new_R = T) the function will 
+#' copy.packages.between.libraries(ask = T)
+#' # it will ask you from what R version
+#' # to copy the packages into which R version.
+#' # Since (do_NOT_override_packages_in_new_R = T) the function will
 #' # make sure to NOT override your newer packages.
-#' 
-#' # copy.packages.between.libraries(ask = T, keep_old = F) 
+#'
+#' # copy.packages.between.libraries(ask = T, keep_old = F)
 #' # As before, but this time it will MOVE (instead of COPY) the packages.
 #' #  e.g: erase them from their old location.
 #' }
-copy.packages.between.libraries <- function(from, to, ask = FALSE, keep_old = TRUE, do_NOT_override_packages_in_new_R = TRUE) {
-   
-   installed_R_folders <- get.installed.R.folders()   
-   installed_R_folders_TABLE <-data.frame("R_version" = names(installed_R_folders) , Folder = installed_R_folders)
-   
-   if(ask) {      
-      ask_again <- T
-      while(ask_again){# n is the row number from the user         
-         ss_R_folder_from <- ask.user.for.a.row(installed_R_folders_TABLE,
-                                                "From: Choose an R version/folder from which to copy the package library",
-                                                "FROM: Write the row number of the R version/folder FROM which to copy (or move) the package library (and then press enter):\n")
+copy.packages.between.libraries <- function(
+                                            from,
+                                            to,
+                                            ask = FALSE,
+                                            keep_old = TRUE,
+                                            do_NOT_override_packages_in_new_R = TRUE
+                                            ) {
+   installed_R_folders <- get.installed.R.folders()
+   installed_R_folders_TABLE <- data.frame(
+     "R_version" = names(installed_R_folders),
+     Folder = installed_R_folders
+   )
+
+   if(ask) {
+      ask_again <- TRUE
+      while(ask_again) {
+         # n is the row number from the user
+         ss_R_folder_from <- ask.user.for.a.row(
+            installed_R_folders_TABLE,
+            "From: Choose an R version/folder from which to copy the package library",
+            "FROM: Write the row number of the R version/folder FROM which to copy (or move) the package library (and then press enter):\n"
+         )
          cat("\nThank you\n")
-         ss_R_folder_to <- ask.user.for.a.row(installed_R_folders_TABLE,
-                                              "To: Choose an R version/folder from INTO which the packages from your old R installations will be copied TO",
-                                              "TO: Write the row number of the R version/folder INTO which to copy (or move) the package library (and then press enter):\n")
+         ss_R_folder_to <- ask.user.for.a.row(
+            installed_R_folders_TABLE,
+            "To: Choose an R version/folder from INTO which the packages from your old R installations will be copied TO",
+            "TO: Write the row number of the R version/folder INTO which to copy (or move) the package library (and then press enter):\n"
+         )
          cat("\nThank you\n")
-         
+
          from <- installed_R_folders[ss_R_folder_from]
          to <- installed_R_folders[ss_R_folder_to]
-         
-         DECISION_text <- paste("You've chosen to move your packages from: ", from, "  to: ", to)
-         ask_again_12 <- ask.user.for.a.row(c("yes", "no"), "Are you sure?",paste(DECISION_text, " - Is this you final decision? \n(for 'yes' press 1, and for 'no' press 2)\n" ))
-         ask_again <- ifelse(ask_again_12==1, F, T) # if we need to ask          
-      }      
+
+         DECISION_text <- paste(
+            "You've chosen to move your packages from: ", from, "  to: ", to
+         )
+         ask_again_12 <- ask.user.for.a.row(
+            c("yes", "no"),
+            "Are you sure?",
+            paste(
+               DECISION_text, " - Is this you final decision? \n(for 'yes'",
+               "press 1, and for 'no' press 2)\n")
+         )
+         ask_again <- ifelse(ask_again_12 == 1, FALSE, TRUE) # if we need to ask
+      }
    }
-   
-   if(missing(from)) from <- installed_R_folders[2] # copy FROM the one version before newest R
-   if(missing(to)) to <- installed_R_folders[1] # copy inTO the newest R
-   
+
+   # copy FROM the one version before newest R
+   if(missing(from)) from <- installed_R_folders[2]
+   # copy inTO the newest R
+   if(missing(to)) to <- installed_R_folders[1]
+
    # the libraries
-   from_library <- file.path(from , "library")
-   to_library <- file.path(to , "library")
-   
+   from_library <- file.path(from, "library")
+   to_library <- file.path(to, "library")
+
    # their packages
    packages_in_the_from_library <- list.files(from_library)
    packages_in_the_to_library <- list.files(to_library) # used for "packages_to_NOT_move" if do_NOT_override_packages_in_new_R==T
-   
+
    # which packages do we want to keep and which do we want to move?
-   packages_to_NOT_move <- unname(installed.packages(priority = "high")[,"Package"]) # some context on "high" packages: http://stackoverflow.com/questions/9700799/what-is-difference-between-r-base-and-r-recommended-packages
-   if(do_NOT_override_packages_in_new_R) packages_to_NOT_move <- c(packages_to_NOT_move, packages_in_the_to_library )
+   # -- some context on "high" packages:
+   # http://stackoverflow.com/questions/9700799/what-is-difference-between-r-base-and-r-recommended-packages
+   packages_to_NOT_move <- unname(installed.packages(priority = "high")[,"Package"])
+   if(do_NOT_override_packages_in_new_R) packages_to_NOT_move <- c(packages_to_NOT_move, packages_in_the_to_library)
    ss_packages_to_NOT_move_from <- packages_in_the_from_library %in% packages_to_NOT_move
    ss_packages_to_YES_move_from <- !ss_packages_to_NOT_move_from # just so there would be no confusion
    # the final list of packages to move:
    packages_to_YES_move_from <- packages_in_the_from_library[ss_packages_to_YES_move_from]
    paths_of_packages_to_copy_from <- file.path(from_library, packages_to_YES_move_from)
-   
-   
-   if(length(packages_to_YES_move_from)==0) {
+
+
+   if(length(packages_to_YES_move_from) == 0) {
       cat("No packages to copy.  Goodbye :) \n")
-      return(F)
+      return(FALSE)
    }
-   
+
    # COPY old packages to the new global folder:
-   cat("-----------------------","\n")
-   cat("I am now copying ", length(packages_to_YES_move_from) ," packages from:", from_library, " ; into: ", to_library) 
+   cat("-----------------------", "\n")
+   cat("I am now copying ", length(packages_to_YES_move_from),
+       " packages from:", from_library, " ; into: ", to_library
+   )
    cat("-----------------------","\n")
    flush.console()  # refresh the console so that the user will see the message
-   packages_to_YES_move_from
-   folders.copied <- file.copy(from = paths_of_packages_to_copy_from,    # copy folders
-                               to = to_library,
-                               overwrite = !do_NOT_override_packages_in_new_R, # to be SURE that an old library will not override a new one.
-                               recursive =TRUE)   
+
+   file.copy(
+      from = paths_of_packages_to_copy_from,    # copy folders
+      to = to_library,
+      # to be SURE that an old library will not override a new one:
+      overwrite = !do_NOT_override_packages_in_new_R,
+      recursive = TRUE
+   )
    cat("=====================","\n")
    cat("Done. We finished copying all the packages to the new location\n")
-   
+
    if(!keep_old) {
       cat("Next: we will remove the packages from the old R installation ('FROM') \n")
-      deleted_packages <- unlink(paths_of_packages_to_copy_from , recursive = TRUE)   # delete all the packages from the "original" library folder (no need for double folders)      
+      deleted_packages <- unlink(paths_of_packages_to_copy_from , recursive = TRUE)   # delete all the packages from the "original" library folder (no need for double folders)
       cat("Done. The old packages were deleted.\n")
-   }   
-   
+   }
+
    return(TRUE)
 }
 
